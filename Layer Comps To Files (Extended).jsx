@@ -57,15 +57,18 @@ $.localize = true;
 var strTitle = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Title=Layer Comps To Files (Extended)");
 var strButtonRun = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Run=Run");
 var strButtonCancel = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Cancel=Cancel");
-var strHelpText = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Help=Please specify the format and location for saving each layer comp as a file.\r\rExtended options:\r\rUncheck File Name Comp Index to remove incremental number from filename. Requires unique comp names or files will overwrite!\r\rSelect Canvas Resize By \"@[size]\" to resize canvas or crop (depending on value used and image size) to [size].\r\rSelect Trim Transparency to remove any transparent padding before saving.\r");
+//var strHelpText = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Help=Please specify the format and location for saving each layer comp as a file. Extended options:\n\nUncheck File Name Comp Index to remove incremental number from filename. Requires unique comp names or files will overwrite!\n\nSelect Canvas Resize By \"@[size]\" to resize canvas or crop to [size].\n\nSelect Image Resize By \"@[size]\" to resize image to [size].\n\nSelect Trim Transparency to remove any transparent padding before saving.\n");
+var strHelpText = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Help=Please specify the format and location for saving each layer comp as a file.");
 var strLabelDestination = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Destination=Destination:");
 var strButtonBrowse = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Browse=&Browse...");
 var strLabelFileNamePrefix = localize("$$$/JavaScripts/LayerCompsToFilesExtended/FileNamePrefix=File Name Prefix:");
 var strCheckboxSelectionOnly = localize("$$$/JavaScripts/LayerCompsToFilesExtended/SelectedOnly=&Selected Layer Comps Only");
 // begin added by uncorp
-var strCheckboxAtSize = localize("$$$/JavaScripts/LayerCompsToFilesExtended/AtSize=&Canvas Resize By \"@[size]\" Comp Name Suffix");
-var strCheckboxTrim = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Trim=&Trim Transparency");
 var strIndexInFilename = localize("$$$/JavaScripts/LayerCompsToFilesExtended/IndexInFilename=&File Name Comp Index");
+var strCheckboxNone = localize("$$$/JavaScripts/LayerCompsToFilesExtended/None=&No Resize Or Trim");
+var strCheckboxCropSize = localize("$$$/JavaScripts/LayerCompsToFilesExtended/CropSize=&Canvas Resize By \"@[size]\" Comp Name Suffix");
+var strCheckboxReSize = localize("$$$/JavaScripts/LayerCompsToFilesExtended/ReSize=&Image Resize By \"@[size]\" Comp Name Suffix");
+var strCheckboxTrim = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Trim=&Trim Transparency");
 // end added by uncorp
 var strLabelFileType = localize("$$$/JavaScripts/LayerCompsToFilesExtended/FileType=File Type:");
 var strCheckboxIncludeICCProfile = localize("$$$/JavaScripts/LayerCompsToFilesExtended/IncludeICC=&Include ICC Profile");
@@ -93,7 +96,7 @@ var strAlertWasSuccessful = localize("$$$/JavaScripts/LayerCompsToFilesExtended/
 var strUnexpectedError = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Unexpectedd=Unexpected error");
 var strMessage = localize("$$$/JavaScripts/LayerCompsToFilesExtended/Message=Layer Comps To Files (Extended) action settings");
 var	stretQuality = localize( "$$$/locale_specific/JavaScripts/LayerCompsToFilesExtended/ETQualityLength=30" );
-var	stretDestination = localize( "$$$/locale_specific/JavaScripts/LayerCompsToFilesExtended/ETDestinationLength=160" );
+var	stretDestination = localize( "$$$/locale_specific/JavaScripts/LayerCompsToFilesExtended/ETDestinationLength=280" );
 var	strddFileType = localize( "$$$/locale_specific/JavaScripts/LayerCompsToFilesExtended/DDFileType=100" );
 var	strpnlOptions = localize( "$$$/locale_specific/JavaScripts/LayerCompsToFilesExtended/PNLOptions=100" );
 var	strCreateFolder = localize( "$$$/JavaScripts/LayerCompsToFilesExtended/CreateFolder=The folder does not exist. Do you wish to create it?^r" );
@@ -212,18 +215,30 @@ function main() {
                 if (fileNameBody.length > 120) fileNameBody = fileNameBody.substring(0,120);
 
 				// begin added by uncorp
-				if (exportInfo.Trim){
-					app.activeDocument.trim(TrimType.TRANSPARENT); // Trim Transparency
-				}
-				if(exportInfo.AtSize && fileNameBody.indexOf("@")){
-					//var name_begin = fileNameBody.substring(0, fileNameBody.lastIndexOf("@")); // the comp name without the @[size]
-					var name_end = fileNameBody.substring(fileNameBody.lastIndexOf("@") + 1, fileNameBody.length); // the [size]
-					if( compRef.name.substring(0,1)=="@"){ // negins with @
-						fileNameBody = fileNameBody.replace('@','');
-					}else{
-						fileNameBody = fileNameBody.replace('@','_');
+
+				if(exportInfo.None){
+					// do nothing
+				}else{
+
+					if(fileNameBody.indexOf("@")){
+						//var name_begin = fileNameBody.substring(0, fileNameBody.lastIndexOf("@")); // the comp name without the @[size]
+						var name_end = fileNameBody.substring(fileNameBody.lastIndexOf("@") + 1, fileNameBody.length); // the [size]
+						if( compRef.name.substring(0,1)=="@"){ // begins with @
+							fileNameBody = fileNameBody.replace('@','');
+						}else{
+							fileNameBody = fileNameBody.replace('@','_');
+						}
 					}
-					app.activeDocument.resizeCanvas(parseInt(name_end), parseInt(name_end));
+
+					if (exportInfo.Trim){
+						app.activeDocument.trim(TrimType.TRANSPARENT); // Trim Transparency
+					}else
+					if(exportInfo.CropSize){
+						app.activeDocument.resizeCanvas(parseInt(name_end), parseInt(name_end));
+					}else
+					if(exportInfo.ReSize){
+						app.activeDocument.resizeImage(parseInt(name_end), parseInt(name_end),null, ResampleMethod.BICUBIC);
+					}
 				}
 				
 				// end added by uncorp 
@@ -298,7 +313,7 @@ function settingDialog(exportInfo)
 	dlgMain.grpSecondLine.alignChildren = 'center';
 
     dlgMain.etDestination = dlgMain.grpSecondLine.add("edittext", undefined, exportInfo.destination.toString());
-    dlgMain.etDestination.preferredSize.width = StrToIntWithDefault( stretDestination, 160 );
+    dlgMain.etDestination.preferredSize.width = StrToIntWithDefault( stretDestination, 280 );
 
     dlgMain.btnBrowse = dlgMain.grpSecondLine.add("button", undefined, strButtonBrowse);
     dlgMain.btnBrowse.onClick = function() {
@@ -327,7 +342,7 @@ function settingDialog(exportInfo)
 	// end added by uncorp
 	
     dlgMain.etFileNamePrefix.alignment = 'fill';
-    dlgMain.etFileNamePrefix.preferredSize.width = StrToIntWithDefault( stretDestination, 160 );
+    dlgMain.etFileNamePrefix.preferredSize.width = StrToIntWithDefault( stretDestination, 280 );
 
 	// -- the fifth line in the dialog
     dlgMain.cbSelection = dlgMain.grpTopLeft.add("checkbox", undefined, strCheckboxSelectionOnly);
@@ -341,10 +356,18 @@ function settingDialog(exportInfo)
     dlgMain.separator = dlgMain.grpTopLeft.add ("panel"); // This one shows as a horizontal line
 	dlgMain.separator.preferredSize = [400, 1];
 
-    dlgMain.cbAtSize = dlgMain.grpTopLeft.add("radiobutton", undefined, strCheckboxAtSize);
-    dlgMain.cbAtSize.value = exportInfo.AtSize;
+    dlgMain.cbNone = dlgMain.grpTopLeft.add("radiobutton", undefined, strCheckboxNone);
+    dlgMain.cbNone.preferredSize.width = 280;
+    dlgMain.cbNone.value = exportInfo.None;
+
+    dlgMain.cbCropSize = dlgMain.grpTopLeft.add("radiobutton", undefined, strCheckboxCropSize);
+    dlgMain.cbCropSize.value = exportInfo.CropSize;
+
+    dlgMain.cbReSize = dlgMain.grpTopLeft.add("radiobutton", undefined, strCheckboxReSize);
+    dlgMain.cbReSize.value = exportInfo.ReSize;
 	
     dlgMain.cbTrim = dlgMain.grpTopLeft.add("radiobutton", undefined, strCheckboxTrim);
+	dlgMain.cbTrim.preferredSize.width = 280;
     dlgMain.cbTrim.value = exportInfo.Trim;	
 	
 	// end added by uncorp
@@ -645,9 +668,11 @@ function settingDialog(exportInfo)
     exportInfo.fileNamePrefix = dlgMain.etFileNamePrefix.text;
     exportInfo.selectionOnly = dlgMain.cbSelection.value;
 	// begin added by uncorp
-    exportInfo.Trim = dlgMain.cbTrim.value;
-	exportInfo.AtSize = dlgMain.cbAtSize.value;
     exportInfo.IndexInFilename = dlgMain.cbIndexInFilename.value;
+	exportInfo.None = dlgMain.cbNone.value;
+	exportInfo.CropSize = dlgMain.cbCropSize.value;
+	exportInfo.ReSize = dlgMain.cbReSize.value;
+    exportInfo.Trim = dlgMain.cbTrim.value;
 	// end added by uncorp
     exportInfo.fileType = dlgMain.ddFileType.selection.index;
     exportInfo.icc = dlgMain.cbIcc.value;
@@ -727,9 +752,11 @@ function initExportInfo(exportInfo)
     exportInfo.fileNamePrefix = new String("untitled_");
     exportInfo.selectionOnly = false;
 	// begin added by uncorp
-    exportInfo.Trim = false;
-	exportInfo.AtSize = false;
     exportInfo.IndexInFilename = true;
+    exportInfo.None = true;
+	exportInfo.CropSize = false;
+	exportInfo.ReSize = false;
+    exportInfo.Trim = false;
 	// end added by uncorp
     exportInfo.fileType = psdIndex;
     exportInfo.icc = true;
