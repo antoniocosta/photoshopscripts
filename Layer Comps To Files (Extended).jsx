@@ -24,7 +24,7 @@
 
 <javascriptresource>
 <name>$$$/JavaScripts/LayerCompsToFilesExtended/Menu=Layer Comps To Files (Extended)...</name>
-	<category>layercomps</category>
+	<category>scriptexport</category>
 	<menu>export</menu>
 	
 	<enableinfo>PSHOP_DocHasLayerComps</enableinfo>
