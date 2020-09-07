@@ -205,7 +205,7 @@ function main() {
 							// create duplicate doc and flatten to save memory. and processing time.  I already have all the data i need so don't need the layers anymore. 
 							var duppedDocument = app.activeDocument.duplicate();
 
-							duppedDocument.flatten(); 
+							duppedDocument.mergeVisibleLayers(); // Replaces duppedDocument.flatten() to support exporting of transparent PNGs (Thx @TrevOwnz !)
 							app.activeDocument = duppedDocument;
 
 							var curRulOrigin = getActiveDocRulerOrigin();
