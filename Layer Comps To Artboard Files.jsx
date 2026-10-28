@@ -166,6 +166,11 @@ function main() {
 		}
 	}
 
+	// crop() reads its bounds in ruler units, and the artboard bounds are in pixels
+	var rememberRulerUnits = app.preferences.rulerUnits;
+	app.preferences.rulerUnits = Units.PIXELS;
+	var rememberMaximize;
+
 	try {
 		var docName = app.activeDocument.name;  // save the app.activeDocument name before duplicate.
 		var compsName = new String("none");
@@ -179,14 +184,13 @@ function main() {
 			app.activeDocument = app.documents[docName];
 			docRef = app.activeDocument;
 	
-			var rememberMaximize;
 			var needMaximize = exportInfo.psdMaxComp ? QueryStateType.ALWAYS : QueryStateType.NEVER;
 			if ( exportInfo.fileType == psdIndex && app.preferences.maximizeCompatibility != needMaximize ) {
 				rememberMaximize = app.preferences.maximizeCompatibility;
 				app.preferences.maximizeCompatibility = needMaximize;
 			}
 			
-			for ( compsIndex = 0; compsIndex < compsCount; compsIndex++ ) {
+			for ( var compsIndex = 0; compsIndex < compsCount; compsIndex++ ) {
 				var compRef = docRef.layerComps[ compsIndex ];
 				if (exportInfo.selectionOnly && !compRef.selected) continue; // selected only
 				compRef.apply();
@@ -200,7 +204,7 @@ function main() {
 						return 'cancel'; // quit, returning 'cancel' (dont localize) makes the actions palette not record our script
 				} else {
 
-					for ( artbrdIndex = 0; artbrdIndex < artbrdCount; artbrdIndex++ ){
+					for ( var artbrdIndex = 0; artbrdIndex < artbrdCount; artbrdIndex++ ){
 
 							// create duplicate doc and flatten to save memory. and processing time.  I already have all the data i need so don't need the layers anymore. 
 							var duppedDocument = app.activeDocument.duplicate();
@@ -218,16 +222,15 @@ function main() {
 							var cropRegion = [lt,tp,rt,bt];
 							duppedDocument.crop(cropRegion);
 
-							if (duppedDocument.bitsPerChannel == duppedDocument.THIRTYTWO) duppedDocument.bitsPerChannel = duppedDocument.SIXTEEN;
+							if (duppedDocument.bitsPerChannel == BitsPerChannelType.THIRTYTWO) duppedDocument.bitsPerChannel = BitsPerChannelType.SIXTEEN;
 
 
 							var fileNameBody = exportInfo.fileNamePrefix;
 							fileNameBody += "_" + zeroSuppress(compsIndex, 4);
 							fileNameBody += "_" + compRef.name;
 							if (null != compRef.comment)    fileNameBody += "_" + compRef.comment;
-							fileNameBody = fileNameBody.replace(/[:\/\\*\?\"\<\>\|\\\r\\\n]/g, "_");  // '/\:*?"<>|\r\n' -> '_'                        
-							
 							fileNameBody += '-'+abAr[artbrdIndex].name;
+							fileNameBody = fileNameBody.replace(/[:\/\\*\?\"\<\>\|\\\r\\\n]/g, "_");  // '/\:*?"<>|\r\n' -> '_'
 							
 							if (fileNameBody.length > 120) fileNameBody = fileNameBody.substring(0,120);
 
@@ -245,10 +248,6 @@ function main() {
 			var dd = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
 			app.playbackParameters = dd;
 
-			if ( rememberMaximize != undefined ) {
-				app.preferences.maximizeCompatibility = rememberMaximize;
-			}
-			
 			if ( DialogModes.ALL == app.playbackDisplayDialogs ) {
 				alert(strTitle + strAlertWasSuccessful);
 			}
@@ -262,6 +261,12 @@ function main() {
 			alert(e);
 		}
 		return 'cancel'; // quit, returning 'cancel' (dont localize) makes the actions palette not record our script
+	}
+	finally {
+		app.preferences.rulerUnits = rememberRulerUnits;
+		if ( rememberMaximize != undefined ) {
+			app.preferences.maximizeCompatibility = rememberMaximize;
+		}
 	}
 }
 
@@ -733,16 +738,6 @@ function initExportInfo(exportInfo)
 	}
 }
 
-function logToHeadLights(eventRecord) 
-{
-	var headlightsActionID = stringIDToTypeID("headlightsLog");
-	var desc = new ActionDescriptor();
-	desc.putString(stringIDToTypeID("subcategory"), "Export");
-	desc.putString(stringIDToTypeID("eventRecord"), eventRecord);
-	executeAction(headlightsActionID, desc, DialogModes.NO);
-}
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function: saveFile
@@ -753,12 +748,9 @@ function logToHeadLights(eventRecord)
 ///////////////////////////////////////////////////////////////////////////////
 function saveFile( docRef, fileNameBody, exportInfo)
 {
-	var isS4W = false,
-		fileExtension;
 	if ( true /* folderExists(exportInfo.destination)*/) {
 		switch (exportInfo.fileType) {
 			case jpegIndex:
-				fileExtension = "jpg";
 				docRef.bitsPerChannel = BitsPerChannelType.EIGHT;
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".jpg");
 				jpgSaveOptions = new JPEGSaveOptions();
@@ -767,14 +759,12 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, jpgSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case psdIndex:
-				fileExtension = "psd";
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".psd");
 				psdSaveOptions = new PhotoshopSaveOptions();
 				psdSaveOptions.embedColorProfile = exportInfo.icc;
 				docRef.saveAs(saveFile, psdSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case tiffIndex:
-				fileExtension = "tiff";
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".tif");
 				tiffSaveOptions = new TiffSaveOptions();
 				tiffSaveOptions.embedColorProfile = exportInfo.icc;
@@ -783,7 +773,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, tiffSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case pdfIndex:
-				fileExtension = "pdf";
 				if (docRef.bitsPerChannel == BitsPerChannelType.THIRTYTWO)
 					docRef.bitsPerChannel = BitsPerChannelType.SIXTEEN;
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".pdf");
@@ -794,7 +783,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, pdfSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case targaIndex:
-				fileExtension = "tga";
 				docRef.bitsPerChannel = BitsPerChannelType.EIGHT;
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".tga");
 				targaSaveOptions = new TargaSaveOptions();
@@ -802,7 +790,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, targaSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case bmpIndex:
-				fileExtension = "bmp";
 				docRef.bitsPerChannel = BitsPerChannelType.EIGHT;
 				var saveFile = new File(exportInfo.destination + "/" + fileNameBody + ".bmp");
 				bmpSaveOptions = new BMPSaveOptions();
@@ -810,8 +797,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, bmpSaveOptions, true, Extension.LOWERCASE);
 				break;
 			case png8Index:
-				fileExtension "png8";
-				isS4W = true;
 				var id5 = charIDToTypeID( "Expr" );
 				var desc3 = new ActionDescriptor();
 				var id6 = charIDToTypeID( "Usng" );
@@ -888,11 +873,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				executeAction( id5, desc3, DialogModes.NO );
 				break;
 			case png24Index:
-				fileExtension "png24";
-				if(exportInfo.png24Transparency) {
-					fileExtension = "png32"
-				}
-				isS4W = true;
 				var id6 = charIDToTypeID( "Expr" );
 				var desc3 = new ActionDescriptor();
 				var id7 = charIDToTypeID( "Usng" );
@@ -941,13 +921,6 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				break;
 		}
 	}
-	if(isS4W) 
-	{
-		logToHeadLights("Save for web - Layer Comp Script");
-	} else {
-		logToHeadLights("Save As - Layer Comp Script");
-	}
-	logToHeadLights("Layer Comp To File " + fileExtension);
 }
 
 

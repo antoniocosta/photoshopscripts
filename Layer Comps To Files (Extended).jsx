@@ -180,6 +180,11 @@ function main() {
 	    }
 	}
 
+    // resizeCanvas() and resizeImage() read their sizes in ruler units, and "@[size]" is in pixels
+    var rememberRulerUnits = app.preferences.rulerUnits;
+    app.preferences.rulerUnits = Units.PIXELS;
+    var rememberMaximize;
+
     try {
         var docName = app.activeDocument.name;  // save the app.activeDocument name before duplicate.
         var compsName = new String("none");
@@ -193,14 +198,13 @@ function main() {
             app.activeDocument = app.documents[docName];
             docRef = app.activeDocument;
     
-            var rememberMaximize;
             var needMaximize = exportInfo.psdMaxComp ? QueryStateType.ALWAYS : QueryStateType.NEVER;
             if ( exportInfo.fileType == psdIndex && app.preferences.maximizeCompatibility != needMaximize ) {
                 rememberMaximize = app.preferences.maximizeCompatibility;
                 app.preferences.maximizeCompatibility = needMaximize;
             }
             
-            for ( compsIndex = 0; compsIndex < compsCount; compsIndex++ ) {
+            for ( var compsIndex = 0; compsIndex < compsCount; compsIndex++ ) {
                 var compRef = docRef.layerComps[ compsIndex ];
                 if (exportInfo.selectionOnly && !compRef.selected) continue; // selected only
                 compRef.apply();
@@ -222,9 +226,10 @@ function main() {
 					// do nothing
 				}else{
 
-					if(fileNameBody.indexOf("@")){
-						//var name_begin = fileNameBody.substring(0, fileNameBody.lastIndexOf("@")); // the comp name without the @[size]
-						var name_end = fileNameBody.substring(fileNameBody.lastIndexOf("@") + 1, fileNameBody.length); // the [size]
+					var size = NaN; // the [size] from "@[size]", NaN when the comp name has none
+					var atIndex = fileNameBody.lastIndexOf("@");
+					if (atIndex != -1) {
+						size = parseInt(fileNameBody.substring(atIndex + 1), 10);
 						if( compRef.name.substring(0,1)=="@"){ // begins with @
 							fileNameBody = fileNameBody.replace('@','');
 						}else{
@@ -233,13 +238,13 @@ function main() {
 					}
 
 					if (exportInfo.Trim){
-						app.activeDocument.trim(TrimType.TRANSPARENT); // Trim Transparency
+						duppedDocument.trim(TrimType.TRANSPARENT); // Trim Transparency
 					}else
-					if(exportInfo.CropSize){
-						app.activeDocument.resizeCanvas(parseInt(name_end), parseInt(name_end));
+					if(exportInfo.CropSize && !isNaN(size)){
+						duppedDocument.resizeCanvas(size, size);
 					}else
-					if(exportInfo.ReSize){
-						app.activeDocument.resizeImage(parseInt(name_end), parseInt(name_end),null, ResampleMethod.BICUBIC);
+					if(exportInfo.ReSize && !isNaN(size)){
+						duppedDocument.resizeImage(size, size, null, ResampleMethod.BICUBIC);
 					}
 				}
 				
@@ -255,10 +260,6 @@ function main() {
 			var dd = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
             app.playbackParameters = dd;
 
-			if ( rememberMaximize != undefined ) {
-			    app.preferences.maximizeCompatibility = rememberMaximize;
-			}
-
 			if ( DialogModes.ALL == app.playbackDisplayDialogs ) {
 			    alert(strTitle + strAlertWasSuccessful);
 			}
@@ -272,6 +273,12 @@ function main() {
             alert(e);
         }
     	return 'cancel'; // quit, returning 'cancel' (dont localize) makes the actions palette not record our script
+    }
+    finally {
+        app.preferences.rulerUnits = rememberRulerUnits;
+        if ( rememberMaximize != undefined ) {
+            app.preferences.maximizeCompatibility = rememberMaximize;
+        }
     }
 }
 
@@ -676,6 +683,10 @@ function settingDialog(exportInfo)
 	exportInfo.ReSize = dlgMain.cbReSize.value;
     exportInfo.Trim = dlgMain.cbTrim.value;
 	// end added by uncorp
+	exportInfo.png8Transparency = dlgMain.pnlFileType.pnlOptions.grpPNG8Options.png8Trans.value;
+	exportInfo.png8Interlaced = dlgMain.pnlFileType.pnlOptions.grpPNG8Options.png8Inter.value;
+	exportInfo.png24Transparency = dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Trans.value;
+	exportInfo.png24Interlaced = dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Inter.value;
     exportInfo.fileType = dlgMain.ddFileType.selection.index;
     exportInfo.icc = dlgMain.cbIcc.value;
     exportInfo.jpegQuality = dlgMain.pnlFileType.pnlOptions.grpJPEGOptions.etQuality.text;
@@ -844,129 +855,10 @@ function saveFile( docRef, fileNameBody, exportInfo)
 				docRef.saveAs(saveFile, bmpSaveOptions, true, Extension.LOWERCASE);
 				break;
         case png8Index:
-			saveFile(docRef, fileNameBody, exportInfo, dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Inter.value, dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Trans.value);
-        	function saveFile( docRef, fileNameBody, exportInfo, interlacedValue, transparencyValue) {
-				var id5 = charIDToTypeID( "Expr" );
-					var desc3 = new ActionDescriptor();
-					var id6 = charIDToTypeID( "Usng" );
-						var desc4 = new ActionDescriptor();
-						var id7 = charIDToTypeID( "Op  " );
-						var id8 = charIDToTypeID( "SWOp" );
-						var id9 = charIDToTypeID( "OpSa" );
-						desc4.putEnumerated( id7, id8, id9 );
-						var id10 = charIDToTypeID( "Fmt " );
-						var id11 = charIDToTypeID( "IRFm" );
-						var id12 = charIDToTypeID( "PNG8" );
-						desc4.putEnumerated( id10, id11, id12 );
-						var id13 = charIDToTypeID( "Intr" ); //Interlaced
-						desc4.putBoolean( id13, interlacedValue );
-						var id14 = charIDToTypeID( "RedA" );
-						var id15 = charIDToTypeID( "IRRd" );
-						var id16 = charIDToTypeID( "Prcp" ); //Algorithm
-						desc4.putEnumerated( id14, id15, id16 );
-						var id17 = charIDToTypeID( "RChT" );
-						desc4.putBoolean( id17, false );
-						var id18 = charIDToTypeID( "RChV" );
-						desc4.putBoolean( id18, false );
-						var id19 = charIDToTypeID( "AuRd" );
-						desc4.putBoolean( id19, false );
-						var id20 = charIDToTypeID( "NCol" ); //NO. Of Colors
-						desc4.putInteger( id20, 256 );
-						var id21 = charIDToTypeID( "Dthr" ); //Dither
-						var id22 = charIDToTypeID( "IRDt" );
-						var id23 = charIDToTypeID( "Dfsn" ); //Dither type
-						desc4.putEnumerated( id21, id22, id23 );
-						var id24 = charIDToTypeID( "DthA" );
-						desc4.putInteger( id24, 100 );
-						var id25 = charIDToTypeID( "DChS" );
-						desc4.putInteger( id25, 0 );
-						var id26 = charIDToTypeID( "DCUI" );
-						desc4.putInteger( id26, 0 );
-						var id27 = charIDToTypeID( "DChT" );
-						desc4.putBoolean( id27, false );
-						var id28 = charIDToTypeID( "DChV" );
-						desc4.putBoolean( id28, false );
-						var id29 = charIDToTypeID( "WebS" );
-						desc4.putInteger( id29, 0 );
-						var id30 = charIDToTypeID( "TDth" ); //transparency dither
-						var id31 = charIDToTypeID( "IRDt" );
-						var id32 = charIDToTypeID( "None" );
-						desc4.putEnumerated( id30, id31, id32 );
-						var id33 = charIDToTypeID( "TDtA" );
-						desc4.putInteger( id33, 100 );
-						var id34 = charIDToTypeID( "Trns" ); //Transparency
-						desc4.putBoolean( id34, transparencyValue );
-						var id35 = charIDToTypeID( "Mtt " );
-						desc4.putBoolean( id35, true );		 //matte
-						var id36 = charIDToTypeID( "MttR" ); //matte color
-						desc4.putInteger( id36, 255 );
-						var id37 = charIDToTypeID( "MttG" );
-						desc4.putInteger( id37, 255 );
-						var id38 = charIDToTypeID( "MttB" );
-						desc4.putInteger( id38, 255 );
-						var id39 = charIDToTypeID( "SHTM" );
-						desc4.putBoolean( id39, false );
-						var id40 = charIDToTypeID( "SImg" );
-						desc4.putBoolean( id40, true );
-						var id41 = charIDToTypeID( "SSSO" );
-						desc4.putBoolean( id41, false );
-						var id42 = charIDToTypeID( "SSLt" );
-							var list1 = new ActionList();
-						desc4.putList( id42, list1 );
-						var id43 = charIDToTypeID( "DIDr" );
-						desc4.putBoolean( id43, false );
-						var id44 = charIDToTypeID( "In  " );
-						desc4.putPath( id44, new File( exportInfo.destination + "/" + fileNameBody + ".png") );
-					var id45 = stringIDToTypeID( "SaveForWeb" );
-					desc3.putObject( id6, id45, desc4 );
-				executeAction( id5, desc3, DialogModes.NO );
-			}
+			savePNG8(fileNameBody, exportInfo);
             break;
         case png24Index:
-        	saveFile(docRef, fileNameBody, exportInfo, dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Inter.value, dlgMain.pnlFileType.pnlOptions.grpPNG24Options.png24Trans.value);
-        	function saveFile( docRef, fileNameBody, exportInfo, interlacedValue, transparencyValue) {
-			var id6 = charIDToTypeID( "Expr" );
-				var desc3 = new ActionDescriptor();
-				var id7 = charIDToTypeID( "Usng" );
-					var desc4 = new ActionDescriptor();
-					var id8 = charIDToTypeID( "Op  " );
-					var id9 = charIDToTypeID( "SWOp" );
-					var id10 = charIDToTypeID( "OpSa" );
-			        desc4.putEnumerated( id8, id9, id10 );
-					var id11 = charIDToTypeID( "Fmt " );
-					var id12 = charIDToTypeID( "IRFm" );
-					var id13 = charIDToTypeID( "PN24" );
-					desc4.putEnumerated( id11, id12, id13 );
-					var id14 = charIDToTypeID( "Intr" );
-					desc4.putBoolean( id14, interlacedValue );
-					var id15 = charIDToTypeID( "Trns" );
-					desc4.putBoolean( id15, transparencyValue );
-					var id16 = charIDToTypeID( "Mtt " );
-					desc4.putBoolean( id16, true );
-					var id17 = charIDToTypeID( "MttR" );
-					desc4.putInteger( id17, 255 );
-					var id18 = charIDToTypeID( "MttG" );
-					desc4.putInteger( id18, 255 );
-					var id19 = charIDToTypeID( "MttB" );
-					desc4.putInteger( id19, 255 );
-					var id20 = charIDToTypeID( "SHTM" );
-					desc4.putBoolean( id20, false );
-					var id21 = charIDToTypeID( "SImg" );
-					desc4.putBoolean( id21, true );
-					var id22 = charIDToTypeID( "SSSO" );
-					desc4.putBoolean( id22, false );
-					var id23 = charIDToTypeID( "SSLt" );
-						var list1 = new ActionList();
-					desc4.putList( id23, list1 );
-					var id24 = charIDToTypeID( "DIDr" );
-					desc4.putBoolean( id24, false );
-					var id25 = charIDToTypeID( "In  " );
-					desc4.putPath( id25, new File( exportInfo.destination + "/" + fileNameBody + ".png") );
-				var id26 = stringIDToTypeID( "SaveForWeb" );
-				desc3.putObject( id7, id26, desc4 );
-			executeAction( id6, desc3, DialogModes.NO );
-			}
-        
+			savePNG24(fileNameBody, exportInfo);
             break;
 			default:
 				if ( DialogModes.NO != app.playbackDisplayDialogs ) {
@@ -977,6 +869,140 @@ function saveFile( docRef, fileNameBody, exportInfo)
 	}
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Function: savePNG8
+// Usage: export the active document as PNG-8 with Save for Web
+// Input: the name of the output file, export info object with the PNG options
+// Return: <none>, a file on disk
+///////////////////////////////////////////////////////////////////////////////
+function savePNG8(fileNameBody, exportInfo)
+{
+	var id5 = charIDToTypeID( "Expr" );
+		var desc3 = new ActionDescriptor();
+		var id6 = charIDToTypeID( "Usng" );
+			var desc4 = new ActionDescriptor();
+			var id7 = charIDToTypeID( "Op  " );
+			var id8 = charIDToTypeID( "SWOp" );
+			var id9 = charIDToTypeID( "OpSa" );
+			desc4.putEnumerated( id7, id8, id9 );
+			var id10 = charIDToTypeID( "Fmt " );
+			var id11 = charIDToTypeID( "IRFm" );
+			var id12 = charIDToTypeID( "PNG8" );
+			desc4.putEnumerated( id10, id11, id12 );
+			var id13 = charIDToTypeID( "Intr" ); //Interlaced
+			desc4.putBoolean( id13, exportInfo.png8Interlaced );
+			var id14 = charIDToTypeID( "RedA" );
+			var id15 = charIDToTypeID( "IRRd" );
+			var id16 = charIDToTypeID( "Prcp" ); //Algorithm
+			desc4.putEnumerated( id14, id15, id16 );
+			var id17 = charIDToTypeID( "RChT" );
+			desc4.putBoolean( id17, false );
+			var id18 = charIDToTypeID( "RChV" );
+			desc4.putBoolean( id18, false );
+			var id19 = charIDToTypeID( "AuRd" );
+			desc4.putBoolean( id19, false );
+			var id20 = charIDToTypeID( "NCol" ); //NO. Of Colors
+			desc4.putInteger( id20, 256 );
+			var id21 = charIDToTypeID( "Dthr" ); //Dither
+			var id22 = charIDToTypeID( "IRDt" );
+			var id23 = charIDToTypeID( "Dfsn" ); //Dither type
+			desc4.putEnumerated( id21, id22, id23 );
+			var id24 = charIDToTypeID( "DthA" );
+			desc4.putInteger( id24, 100 );
+			var id25 = charIDToTypeID( "DChS" );
+			desc4.putInteger( id25, 0 );
+			var id26 = charIDToTypeID( "DCUI" );
+			desc4.putInteger( id26, 0 );
+			var id27 = charIDToTypeID( "DChT" );
+			desc4.putBoolean( id27, false );
+			var id28 = charIDToTypeID( "DChV" );
+			desc4.putBoolean( id28, false );
+			var id29 = charIDToTypeID( "WebS" );
+			desc4.putInteger( id29, 0 );
+			var id30 = charIDToTypeID( "TDth" ); //transparency dither
+			var id31 = charIDToTypeID( "IRDt" );
+			var id32 = charIDToTypeID( "None" );
+			desc4.putEnumerated( id30, id31, id32 );
+			var id33 = charIDToTypeID( "TDtA" );
+			desc4.putInteger( id33, 100 );
+			var id34 = charIDToTypeID( "Trns" ); //Transparency
+			desc4.putBoolean( id34, exportInfo.png8Transparency );
+			var id35 = charIDToTypeID( "Mtt " );
+			desc4.putBoolean( id35, true );		 //matte
+			var id36 = charIDToTypeID( "MttR" ); //matte color
+			desc4.putInteger( id36, 255 );
+			var id37 = charIDToTypeID( "MttG" );
+			desc4.putInteger( id37, 255 );
+			var id38 = charIDToTypeID( "MttB" );
+			desc4.putInteger( id38, 255 );
+			var id39 = charIDToTypeID( "SHTM" );
+			desc4.putBoolean( id39, false );
+			var id40 = charIDToTypeID( "SImg" );
+			desc4.putBoolean( id40, true );
+			var id41 = charIDToTypeID( "SSSO" );
+			desc4.putBoolean( id41, false );
+			var id42 = charIDToTypeID( "SSLt" );
+				var list1 = new ActionList();
+			desc4.putList( id42, list1 );
+			var id43 = charIDToTypeID( "DIDr" );
+			desc4.putBoolean( id43, false );
+			var id44 = charIDToTypeID( "In  " );
+			desc4.putPath( id44, new File( exportInfo.destination + "/" + fileNameBody + ".png") );
+		var id45 = stringIDToTypeID( "SaveForWeb" );
+		desc3.putObject( id6, id45, desc4 );
+	executeAction( id5, desc3, DialogModes.NO );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function: savePNG24
+// Usage: export the active document as PNG-24 with Save for Web
+// Input: the name of the output file, export info object with the PNG options
+// Return: <none>, a file on disk
+///////////////////////////////////////////////////////////////////////////////
+function savePNG24(fileNameBody, exportInfo)
+{
+	var id6 = charIDToTypeID( "Expr" );
+		var desc3 = new ActionDescriptor();
+		var id7 = charIDToTypeID( "Usng" );
+			var desc4 = new ActionDescriptor();
+			var id8 = charIDToTypeID( "Op  " );
+			var id9 = charIDToTypeID( "SWOp" );
+			var id10 = charIDToTypeID( "OpSa" );
+	        desc4.putEnumerated( id8, id9, id10 );
+			var id11 = charIDToTypeID( "Fmt " );
+			var id12 = charIDToTypeID( "IRFm" );
+			var id13 = charIDToTypeID( "PN24" );
+			desc4.putEnumerated( id11, id12, id13 );
+			var id14 = charIDToTypeID( "Intr" );
+			desc4.putBoolean( id14, exportInfo.png24Interlaced );
+			var id15 = charIDToTypeID( "Trns" );
+			desc4.putBoolean( id15, exportInfo.png24Transparency );
+			var id16 = charIDToTypeID( "Mtt " );
+			desc4.putBoolean( id16, true );
+			var id17 = charIDToTypeID( "MttR" );
+			desc4.putInteger( id17, 255 );
+			var id18 = charIDToTypeID( "MttG" );
+			desc4.putInteger( id18, 255 );
+			var id19 = charIDToTypeID( "MttB" );
+			desc4.putInteger( id19, 255 );
+			var id20 = charIDToTypeID( "SHTM" );
+			desc4.putBoolean( id20, false );
+			var id21 = charIDToTypeID( "SImg" );
+			desc4.putBoolean( id21, true );
+			var id22 = charIDToTypeID( "SSSO" );
+			desc4.putBoolean( id22, false );
+			var id23 = charIDToTypeID( "SSLt" );
+				var list1 = new ActionList();
+			desc4.putList( id23, list1 );
+			var id24 = charIDToTypeID( "DIDr" );
+			desc4.putBoolean( id24, false );
+			var id25 = charIDToTypeID( "In  " );
+			desc4.putPath( id25, new File( exportInfo.destination + "/" + fileNameBody + ".png") );
+		var id26 = stringIDToTypeID( "SaveForWeb" );
+		desc3.putObject( id7, id26, desc4 );
+	executeAction( id6, desc3, DialogModes.NO );
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function: zeroSuppress
