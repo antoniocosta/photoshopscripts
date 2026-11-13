@@ -13,6 +13,8 @@ Exports every layer comp once per artboard. For a document with 3 comps and 2 ar
 
 Each file is named `<prefix>_<index>_<comp name>[_<comp comment>]-<artboard name>`, for example `homepage_0000_Dark-Mobile.png`. The prefix defaults to the document name and the index starts at `0000`.
 
+Tick **Only Visible Artboards** to skip hidden artboards. Visibility is checked after each comp is applied, so a comp that hides an artboard skips it too. This is also how to export a single artboard: hide the others.
+
 The document needs at least one artboard. Transparent PNG export is supported (thanks [@TrevOwnz](https://github.com/antoniocosta/photoshopscripts/issues/1)).
 
 ### Layer Comps To Files (Extended)
@@ -30,9 +32,13 @@ Sizes are square and in pixels. The `@` becomes `_` in the file name (`icon@64` 
 
 Both scripts save as BMP, JPEG, PDF, PSD, Targa, TIFF, PNG-8 or PNG-24. Settings are remembered between runs, and both scripts can be recorded in an action.
 
+### Actions and droplets
+
+If you leave **File Name Prefix** as the document name when recording an action, each document played through the action or droplet uses its own name as the prefix. If you type a custom prefix, that prefix is used for every document.
+
 ## Install
 
-1. Download the `.jsx` file you want.
+1. Open the `.jsx` file you want on GitHub and click **Download raw file** (or **Raw**, then save the page). Saving the normal GitHub page gives you HTML, and Photoshop fails with `Error 60: Not well-formed`.
 2. Copy it into Photoshop's `Presets/Scripts` folder:
    - macOS: `/Applications/Adobe Photoshop <version>/Presets/Scripts`
    - Windows: `C:\Program Files\Adobe\Adobe Photoshop <version>\Presets\Scripts`

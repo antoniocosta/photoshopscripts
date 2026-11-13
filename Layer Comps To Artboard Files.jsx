@@ -55,6 +55,7 @@ var strLabelDestination = localize("$$$/JavaScripts/LayerCompsToABFiles/Destinat
 var strButtonBrowse = localize("$$$/JavaScripts/LayerCompsToABFiles/Browse=&Browse...");
 var strLabelFileNamePrefix = localize("$$$/JavaScripts/LayerCompsToABFiles/FileNamePrefix=File Name Prefix:");
 var strCheckboxSelectionOnly = localize("$$$/JavaScripts/LayerCompsToABFiles/SelectedOnly=&Selected Layer Comps Only");
+var strCheckboxVisibleArtboardsOnly = localize("$$$/JavaScripts/LayerCompsToABFiles/VisibleArtboardsOnly=Only &Visible Artboards");
 var strLabelFileType = localize("$$$/JavaScripts/LayerCompsToABFiles/FileType=File Type:");
 var strCheckboxIncludeICCProfile = localize("$$$/JavaScripts/LayerCompsToABFiles/IncludeICC=&Include ICC Profile");
 var strJPEGOptions = localize("$$$/JavaScripts/LayerCompsToABFiles/JPEGOptions=JPEG Options:");
@@ -150,7 +151,7 @@ function main() {
 	
 	// look for last used params via Photoshop registry, getCustomOptions will throw if none exist
 	try {
-		var d = app.getCustomOptions("d69fc733-75b4-4d5c-ae8a-c6d6f9a8aa32");
+		var d = app.getCustomOptions("7ef5c0a1-ecc1-4041-8106-5e96aea1996d");
 		descriptorToObject(exportInfo, d, strMessage, postProcessExportInfo);
 	}
 	catch(e) {
@@ -159,6 +160,9 @@ function main() {
 	
 	// see if I am getting descriptor parameters
 	descriptorToObject(exportInfo, app.playbackParameters, strMessage, postProcessExportInfo);
+
+	// a prefix left as the document name follows whichever document is open (actions, droplets)
+	if (exportInfo.prefixIsDocName) exportInfo.fileNamePrefix = getDocFileNamePrefix();
 	
 	if ( DialogModes.ALL == app.playbackDisplayDialogs ) {
 		if (cancelButtonID == settingDialog(exportInfo)) {
@@ -197,12 +201,20 @@ function main() {
 
 				// get the artboard data from the active document,
 				var abAr = getABLayerInfo().reverse();
-				var artbrdCount = abAr.length;
 
-				if ( artbrdCount == 0 ) {
+				if ( abAr.length == 0 ) {
 					if ( DialogModes.NO != app.playbackDisplayDialogs ) { alert ( strAlertNoArtboardsFound ); }
 						return 'cancel'; // quit, returning 'cancel' (dont localize) makes the actions palette not record our script
 				} else {
+					// visibility is read after the comp is applied, so comps can hide artboards too
+					if (exportInfo.visibleArtboardsOnly) {
+						var visibleAbAr = [];
+						for ( var v = 0; v < abAr.length; v++ ) {
+							if (abAr[v].visible) visibleAbAr.push(abAr[v]);
+						}
+						abAr = visibleAbAr;
+					}
+					var artbrdCount = abAr.length;
 
 					for ( var artbrdIndex = 0; artbrdIndex < artbrdCount; artbrdIndex++ ){
 
@@ -243,7 +255,7 @@ function main() {
 			}
 
 			var d = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
-			app.putCustomOptions("d69fc733-75b4-4d5c-ae8a-c6d6f9a8aa32", d);
+			app.putCustomOptions("7ef5c0a1-ecc1-4041-8106-5e96aea1996d", d);
 
 			var dd = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
 			app.playbackParameters = dd;
@@ -335,6 +347,9 @@ function settingDialog(exportInfo)
 	// -- the fifth line in the dialog
 	dlgMain.cbSelection = dlgMain.grpTopLeft.add("checkbox", undefined, strCheckboxSelectionOnly);
 	dlgMain.cbSelection.value = exportInfo.selectionOnly;
+
+	dlgMain.cbVisibleArtboards = dlgMain.grpTopLeft.add("checkbox", undefined, strCheckboxVisibleArtboardsOnly);
+	dlgMain.cbVisibleArtboards.value = exportInfo.visibleArtboardsOnly;
 
 	// -- the sixth line is the panel
 	dlgMain.pnlFileType = dlgMain.grpTopLeft.add("panel", undefined, strLabelFileType);
@@ -631,7 +646,9 @@ function settingDialog(exportInfo)
 	// get setting from dialog
 	exportInfo.destination = dlgMain.etDestination.text;
 	exportInfo.fileNamePrefix = dlgMain.etFileNamePrefix.text;
+	exportInfo.prefixIsDocName = (exportInfo.fileNamePrefix == getDocFileNamePrefix());
 	exportInfo.selectionOnly = dlgMain.cbSelection.value;
+	exportInfo.visibleArtboardsOnly = dlgMain.cbVisibleArtboards.value;
 	exportInfo.fileType = dlgMain.ddFileType.selection.index;
 	exportInfo.icc = dlgMain.cbIcc.value;
 	exportInfo.jpegQuality = dlgMain.pnlFileType.pnlOptions.grpJPEGOptions.etQuality.text;
@@ -712,7 +729,9 @@ function initExportInfo(exportInfo)
 {
 	exportInfo.destination = new String("");
 	exportInfo.fileNamePrefix = new String("untitled_");
+	exportInfo.prefixIsDocName = false; // false keeps the recorded prefix in actions made before this option existed
 	exportInfo.selectionOnly = false;
+	exportInfo.visibleArtboardsOnly = false;
 	exportInfo.fileType = psdIndex;
 	exportInfo.icc = true;
 	exportInfo.jpegQuality = 8;
@@ -730,12 +749,10 @@ function initExportInfo(exportInfo)
 
 	try {
 		exportInfo.destination = Folder(app.activeDocument.fullName.parent).fsName; // destination folder
-		var tmp = app.activeDocument.fullName.name;
-		exportInfo.fileNamePrefix = decodeURI(tmp.substring(0, tmp.indexOf("."))); // filename body part
 	} catch(someError) {
 		exportInfo.destination = new String("");
-		exportInfo.fileNamePrefix = app.activeDocument.name; // filename body part
 	}
+	exportInfo.fileNamePrefix = getDocFileNamePrefix(); // filename body part
 }
 
 
@@ -1230,6 +1247,7 @@ function getABLayerInfo()
 					 artBoardLay.right = aright;
 					 artBoardLay.AMid= id;
 					 artBoardLay.index = index;
+					 artBoardLay.visible = visible;
 					//alert([name, isLayerSet, atop,aleft,abottom,aright, name, id, index, visible] )
 					abArr.push(artBoardLay); 
 				}
@@ -1254,6 +1272,22 @@ function getActiveDocRulerOrigin()
 	return [theH,theV]
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Function: getDocFileNamePrefix
+// Usage: the default file name prefix for the active document
+// Input: nothing
+// Return: the document's file name without its extension
+///////////////////////////////////////////////////////////////////////////////
+function getDocFileNamePrefix() {
+	try {
+		var tmp = app.activeDocument.fullName.name;
+		var dot = tmp.indexOf(".");
+		return decodeURI(dot > 0 ? tmp.substring(0, dot) : tmp);
+	} catch(someError) {
+		return app.activeDocument.name; // document has never been saved
+	}
+}
 
 
 // End Layer Comps To Files.jsx

@@ -164,7 +164,7 @@ function main() {
     
  	// look for last used params via Photoshop registry, getCustomOptions will throw if none exist
 	try {
-		var d = app.getCustomOptions("d69fc733-75b4-4d5c-ae8a-c6d6f9a8aa32");
+		var d = app.getCustomOptions("3cf5f2ee-c133-4cfd-a528-d49c4308c00d");
 		descriptorToObject(exportInfo, d, strMessage, postProcessExportInfo);
 	}
 	catch(e) {
@@ -173,6 +173,9 @@ function main() {
 	
 	// see if I am getting descriptor parameters
     descriptorToObject(exportInfo, app.playbackParameters, strMessage, postProcessExportInfo);
+
+	// a prefix left as the document name follows whichever document is open (actions, droplets)
+	if (exportInfo.prefixIsDocName) exportInfo.fileNamePrefix = getDocFileNamePrefix();
     
     if ( DialogModes.ALL == app.playbackDisplayDialogs ) {
     	if (cancelButtonID == settingDialog(exportInfo)) {
@@ -255,7 +258,7 @@ function main() {
             }
 
 			var d = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
- 	        app.putCustomOptions("d69fc733-75b4-4d5c-ae8a-c6d6f9a8aa32", d);
+ 	        app.putCustomOptions("3cf5f2ee-c133-4cfd-a528-d49c4308c00d", d);
 
 			var dd = objectToDescriptor(exportInfo, strMessage, preProcessExportInfo);
             app.playbackParameters = dd;
@@ -345,9 +348,7 @@ function settingDialog(exportInfo)
 	// end commented by uncorp
 	// begin added by uncorp
 	// Use the PSD name by default
-	var tmp = app.activeDocument.fullName.name;
-	tmp = decodeURI(tmp.substring(0, tmp.indexOf("."))); // 1 body part
-	dlgMain.etFileNamePrefix = dlgMain.grpTopLeft.add("edittext", undefined, tmp.toString());
+	dlgMain.etFileNamePrefix = dlgMain.grpTopLeft.add("edittext", undefined, getDocFileNamePrefix());
 	// end added by uncorp
 	
     dlgMain.etFileNamePrefix.alignment = 'fill';
@@ -675,6 +676,7 @@ function settingDialog(exportInfo)
     // get setting from dialog
     exportInfo.destination = dlgMain.etDestination.text;
     exportInfo.fileNamePrefix = dlgMain.etFileNamePrefix.text;
+    exportInfo.prefixIsDocName = (exportInfo.fileNamePrefix == getDocFileNamePrefix());
     exportInfo.selectionOnly = dlgMain.cbSelection.value;
 	// begin added by uncorp
     exportInfo.IndexInFilename = dlgMain.cbIndexInFilename.value;
@@ -763,6 +765,7 @@ function initExportInfo(exportInfo)
 {
     exportInfo.destination = new String("");
     exportInfo.fileNamePrefix = new String("untitled_");
+    exportInfo.prefixIsDocName = false; // false keeps the recorded prefix in actions made before this option existed
     exportInfo.selectionOnly = false;
 	// begin added by uncorp
     exportInfo.IndexInFilename = true;
@@ -788,12 +791,10 @@ function initExportInfo(exportInfo)
 
     try {
         exportInfo.destination = Folder(app.activeDocument.fullName.parent).fsName; // destination folder
-        var tmp = app.activeDocument.fullName.name;
-        exportInfo.fileNamePrefix = decodeURI(tmp.substring(0, tmp.indexOf("."))); // 1 body part
     } catch(someError) {
         exportInfo.destination = new String("");
-        exportInfo.fileNamePrefix = app.activeDocument.name; // filename body part
     }
+    exportInfo.fileNamePrefix = getDocFileNamePrefix(); // filename body part
 }
 
 
@@ -1250,6 +1251,22 @@ function KeyIsLRArrow (event) {
 
 function KeyIsTabEnterEscape (event) {
 	return event.keyName == 'Tab' || event.keyName == 'Enter' || event.keyName == 'Escape';
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function: getDocFileNamePrefix
+// Usage: the default file name prefix for the active document
+// Input: nothing
+// Return: the document's file name without its extension
+///////////////////////////////////////////////////////////////////////////////
+function getDocFileNamePrefix() {
+	try {
+		var tmp = app.activeDocument.fullName.name;
+		var dot = tmp.indexOf(".");
+		return decodeURI(dot > 0 ? tmp.substring(0, dot) : tmp);
+	} catch(someError) {
+		return app.activeDocument.name; // document has never been saved
+	}
 }
 
 // End Layer Comps To Files (Extended).jsx
