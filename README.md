@@ -5,6 +5,10 @@ Assorted Photoshop scripts... made by me.
 
 Both scripts here are extended versions of Adobe's "Layer Comps To Files" sample script. They export every layer comp in the open document to its own file, with extra options described below.
 
+If you like this or find it useful, support the project by buying me a coffee.
+
+<a href="https://www.buymeacoffee.com/antoniocosta" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 140px !important;" ></a>
+
 ## The scripts
 
 ### Layer Comps To Artboard Files
@@ -55,9 +59,3 @@ Recent Photoshop versions also come with **File › Export › Layer Comps to Fi
 ## Credits
 
 Based on Adobe's "Layer Comps To Files" sample script (Copyright 2007 Adobe Systems), written by Naoki Hada, Tom Ruark and Jeffrey Tranberry. Artboard support by Antonio Costa.
-
-## Support
-
-If you like ❤️ this or find it useful 🌟, support the project by buying me a coffee ☕.
-
-<a href="https://www.buymeacoffee.com/antoniocosta" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 140px !important;" ></a>
